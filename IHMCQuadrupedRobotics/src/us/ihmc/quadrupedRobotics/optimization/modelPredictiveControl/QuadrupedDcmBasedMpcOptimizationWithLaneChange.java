@@ -34,7 +34,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
    private final QuadrupedTimedStepPressurePlanner timedStepPressurePlanner;
 
    private final ConstrainedQPSolver qpSolver = new OASESConstrainedQPSolver(null);
-   private final DenseMatrix64F qpSolutionVector = new DenseMatrix64F(6, 1);
+   private final DenseMatrix64F qpSolutionVector = new DenseMatrix64F(8, 1);
    private final DenseMatrix64F qpCostVector = new DenseMatrix64F(100, 1);
    private final DenseMatrix64F qpCostMatrix = new DenseMatrix64F(100, 100);
    private final DenseMatrix64F qpEqualityVector = new DenseMatrix64F(100, 1);
@@ -44,11 +44,11 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
 
    private final DenseMatrix64F x0 = new DenseMatrix64F(100, 1);
    private final DenseMatrix64F y0 = new DenseMatrix64F(2, 1);
-   private final DenseMatrix64F B = new DenseMatrix64F(100, 6);
+   private final DenseMatrix64F B = new DenseMatrix64F(100, 8);
    private final DenseMatrix64F C = new DenseMatrix64F(2, 100);
    private final DenseMatrix64F S = new DenseMatrix64F(2, 100);
    private final DenseMatrix64F CmS = new DenseMatrix64F(2, 100);
-   private final DenseMatrix64F CmSB = new DenseMatrix64F(2, 6);
+   private final DenseMatrix64F CmSB = new DenseMatrix64F(2, 8);
    private final DenseMatrix64F CmSx0py0 = new DenseMatrix64F(2, 1);
 
    private int numberOfContacts = 0;
@@ -89,9 +89,10 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       // u1 >=0
       // u2 >= 0
       // u3 >= 0
-      // where u = [u0, u1, u2, u3, u4, u5]',
-      // u0, u1, u2, u3 are the normalized contact pressures for each quadrant and
-      // u4, u5 are the x and y step adjustment in meters
+      // where u = [u0, u1, u2, u3, u4, u5, u6, u7]',
+      // u0, u1, u2, u3 are the normalized contact pressures for each quadrant,
+      // u4, u5 are the x and y step adjustment in meters, and
+      // u6, u7 are the x and y angular momentum rate of change for the initial time interval
 
       // Compute current divergent component of motion.
       dcmPositionEstimator.compute(currentDcmEstimate, currentComVelocity);
@@ -136,7 +137,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       initializeInequalityConstraints();
 
       DenseMatrix64F u = qpSolutionVector;
-      u.reshape(numberOfContacts + 2, 1);
+      u.reshape(numberOfContacts + 4, 1);
       try
       {
          qpSolver.solve(A, b, Aeq, beq, Ain, bin, u, false);
@@ -148,7 +149,8 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
 
       // Compute optimal centroidal moment pivot and step adjustment
       int rowOffset = 0;
-      cmpPositionSetpoint.setToZero();
+      cmpPositionSetpoint.set(-u.get(numberOfContacts + 3), u.get(numberOfContacts + 2), 0.0);
+      cmpPositionSetpoint.scale(1.0 / (linearInvertedPendulumModel.getMass() * linearInvertedPendulumModel.getGravity()));
       for (RobotQuadrant robotQuadrant : RobotQuadrant.values)
       {
          if (currentContactState.get(robotQuadrant) == ContactState.IN_CONTACT)
@@ -163,6 +165,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
          stepAdjustmentVector.set(direction, u.get(rowOffset++, 0));
       }
 
+
       // Update logging variables
       yoCmpPositionSetpoint.setAndMatchFrame(cmpPositionSetpoint);
       yoStepAdjustmentVector.setAndMatchFrame(stepAdjustmentVector);
@@ -172,7 +175,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
    {
       // Initialize cost terms. (min_u u'Au + b'u)
       DenseMatrix64F A = qpCostMatrix;
-      A.reshape(numberOfContacts + 2, numberOfContacts + 2);
+      A.reshape(numberOfContacts + 4, numberOfContacts + 4);
       A.zero();
       for (int i = 0; i < numberOfContacts; i++)
       {
@@ -182,9 +185,13 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       {
          A.set(i, i, settings.getStepAdjustmentCost());
       }
+      for (int i = numberOfContacts + 2; i < numberOfContacts + 4; i++)
+      {
+         A.set(i, i, settings.getAngularMomentumCost());
+      }
 
       DenseMatrix64F b = qpCostVector;
-      b.reshape(numberOfContacts + 2, 1);
+      b.reshape(numberOfContacts + 4, 1);
       b.zero();
 
       int rowOffset = 0;
@@ -203,7 +210,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       // Initialize equality constraints. (Aeq u = beq)
       x0.reshape(2 * numberOfIntervals, 1);                    // center of pressure offset
       y0.reshape(2, 1);                                        // final divergent component of motion offset
-      B.reshape(2 * numberOfIntervals, numberOfContacts + 2);  // center of pressure map
+      B.reshape(2 * numberOfIntervals, numberOfContacts + 4);  // centroidal moment pivot map
       C.reshape(2, 2 * numberOfIntervals);                     // final divergent component of motion map
       S.reshape(2, 2 * numberOfIntervals);                     // final interval selection matrix
       B.zero();
@@ -211,10 +218,9 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       S.zero();
 
       int rowOffset = 0;
-      int columnOffset = 0;
       for (Direction direction : Direction.values2D())
       {
-         columnOffset = 0;
+         int columnOffset = 0;
          for (RobotQuadrant robotQuadrant : RobotQuadrant.values)
          {
             if (currentContactState.get(robotQuadrant) == ContactState.IN_CONTACT)
@@ -249,9 +255,12 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
          y0.set(rowOffset, 0, Math.exp(naturalFrequency * previewTime) * currentDcmEstimate.get(direction));
          rowOffset++;
       }
+      double totalPressure = linearInvertedPendulumModel.getMass() * linearInvertedPendulumModel.getGravity();
+      B.set(0, numberOfContacts + 3, -1.0 / totalPressure);
+      B.set(1, numberOfContacts + 2, 1.0 / totalPressure);
 
       CmS.reshape(2, 2 * numberOfIntervals);
-      CmSB.reshape(2, numberOfContacts + 2);
+      CmSB.reshape(2, numberOfContacts + 4);
       CmSx0py0.reshape(2, 1);
       CommonOps.subtract(C, S, CmS);
       CommonOps.mult(CmS, B, CmSB);
@@ -259,9 +268,9 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       CommonOps.multAdd(CmS, x0, CmSx0py0);
 
       DenseMatrix64F Aeq = qpEqualityMatrix;
-      Aeq.reshape(3, numberOfContacts + 2);
+      Aeq.reshape(3, numberOfContacts + 4);
       Aeq.zero();
-      for (int i = 0; i < numberOfContacts + 2; i++)
+      for (int i = 0; i < numberOfContacts + 4; i++)
       {
          Aeq.set(0, i, CmSB.get(0, i));
          Aeq.set(1, i, CmSB.get(1, i));
@@ -283,7 +292,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
    {
       // Initialize inequality constraints. (Ain u <= bin)
       DenseMatrix64F Ain = qpInequalityMatrix;
-      Ain.reshape(numberOfContacts, numberOfContacts + 2);
+      Ain.reshape(numberOfContacts, numberOfContacts + 4);
       Ain.zero();
       for (int i = 0; i < numberOfContacts; i++)
       {

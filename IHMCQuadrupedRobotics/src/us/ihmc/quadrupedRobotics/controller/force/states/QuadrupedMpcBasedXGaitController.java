@@ -42,15 +42,16 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
 
    // parameters
    private final ParameterFactory parameterFactory = ParameterFactory.createWithRegistry(getClass(), registry);
-   private final DoubleParameter mpcMaximumPreviewTimeParameter = parameterFactory.createDouble("maximumPreviewTime", 10);
-   private final DoubleParameter mpcStepAdjustmentCostParameter = parameterFactory.createDouble("stepAdjustmentCost", 1000000);
+   private final DoubleParameter mpcMaximumPreviewTimeParameter = parameterFactory.createDouble("maximumPreviewTime", 5);
+   private final DoubleParameter mpcAngularMomentumCostParameter = parameterFactory.createDouble("angularMomentumCost", 1);
+   private final DoubleParameter mpcStepAdjustmentCostParameter = parameterFactory.createDouble("stepAdjustmentCost", 1e6);
    private final DoubleParameter mpcCopAdjustmentCostParameter = parameterFactory.createDouble("copAdjustmentCost", 1);
    private final DoubleArrayParameter bodyOrientationProportionalGainsParameter = parameterFactory
          .createDoubleArray("bodyOrientationProportionalGains", 5000, 5000, 5000);
    private final DoubleArrayParameter bodyOrientationDerivativeGainsParameter = parameterFactory
          .createDoubleArray("bodyOrientationDerivativeGains", 750, 750, 750);
-   private final DoubleArrayParameter bodyOrientationIntegralGainsParameter = parameterFactory.createDoubleArray("bodyOrientationIntegralGains", 0, 0, 0);
-   private final DoubleParameter bodyOrientationMaxIntegralErrorParameter = parameterFactory.createDouble("bodyOrientationMaxIntegralError", 0);
+   private final DoubleArrayParameter bodyOrientationIntegralGainsParameter = parameterFactory.createDoubleArray("bodyOrientationIntegralGains", 1000, 0, 0);
+   private final DoubleParameter bodyOrientationMaxIntegralErrorParameter = parameterFactory.createDouble("bodyOrientationMaxIntegralError", 100);
    private final DoubleArrayParameter comPositionProportionalGainsParameter = parameterFactory.createDoubleArray("comPositionProportionalGains", 0, 0, 5000);
    private final DoubleArrayParameter comPositionDerivativeGainsParameter = parameterFactory.createDoubleArray("comPositionDerivativeGains", 0, 0, 750);
    private final DoubleArrayParameter comPositionIntegralGainsParameter = parameterFactory.createDoubleArray("comPositionIntegralGains", 0, 0, 0);
@@ -137,8 +138,8 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
       timedStepController = controllerToolbox.getTimedStepController();
       mpcOptimization = new QuadrupedDcmBasedMpcOptimizationWithLaneChange(controllerToolbox.getDcmPositionEstimator(), NUMBER_OF_PREVIEW_STEPS, registry,
             runtimeEnvironment.getGraphicsListRegistry());
-      mpcSettings = new QuadrupedMpcOptimizationWithLaneChangeSettings(mpcMaximumPreviewTimeParameter.get(), mpcStepAdjustmentCostParameter.get(),
-            mpcCopAdjustmentCostParameter.get());
+      mpcSettings = new QuadrupedMpcOptimizationWithLaneChangeSettings(mpcMaximumPreviewTimeParameter.get(), mpcAngularMomentumCostParameter.get(),
+            mpcStepAdjustmentCostParameter.get(), mpcCopAdjustmentCostParameter.get());
 
       // task space controllers
       taskSpaceEstimates = new QuadrupedTaskSpaceEstimator.Estimates();
@@ -191,6 +192,7 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
    private void updateGains()
    {
       mpcSettings.setMaximumPreviewTime(mpcMaximumPreviewTimeParameter.get());
+      mpcSettings.setStepAdjustmentCost(mpcAngularMomentumCostParameter.get());
       mpcSettings.setStepAdjustmentCost(mpcStepAdjustmentCostParameter.get());
       mpcSettings.setCopAdjustmentCost(mpcCopAdjustmentCostParameter.get());
       comPositionController.getGains().setProportionalGains(comPositionProportionalGainsParameter.get());

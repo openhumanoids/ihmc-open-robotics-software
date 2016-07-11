@@ -5,6 +5,9 @@ public class QuadrupedMpcOptimizationWithLaneChangeSettings
    /** maximum preview window duration in seconds */
    private double maximumPreviewTime;
 
+   /** angular momentum cost */
+   private double angularMomentumCost;
+
    /** step adjustment cost */
    private double stepAdjustmentCost;
 
@@ -13,14 +16,25 @@ public class QuadrupedMpcOptimizationWithLaneChangeSettings
 
    public QuadrupedMpcOptimizationWithLaneChangeSettings()
    {
-      this(10, 1000000, 1);
+      this(10, 1000000, 10000, 1);
    }
 
-   public QuadrupedMpcOptimizationWithLaneChangeSettings(double maximumPreviewTime, double stepAdjustmentCost, double copAdjustmentCost)
+   public QuadrupedMpcOptimizationWithLaneChangeSettings(double maximumPreviewTime, double angularMomentumCost, double stepAdjustmentCost, double copAdjustmentCost)
    {
       this.maximumPreviewTime = maximumPreviewTime;
+      this.angularMomentumCost = angularMomentumCost;
       this.stepAdjustmentCost = stepAdjustmentCost;
       this.copAdjustmentCost = copAdjustmentCost;
+   }
+
+   public double getAngularMomentumCost()
+   {
+      return angularMomentumCost;
+   }
+
+   public void setAngularMomentumCost(double angularMomentumCost)
+   {
+      this.angularMomentumCost = angularMomentumCost;
    }
 
    public double getStepAdjustmentCost()

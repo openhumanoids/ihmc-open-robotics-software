@@ -14,17 +14,21 @@ public class QuadrupedMpcOptimizationWithLaneChangeSettings
    /** center of pressure adjustment cost */
    private double copAdjustmentCost;
 
+   /** minimum normalized contact pressure for each foot (should be between 0.0 and 0.25) */
+   private double minimumNormalizedContactPressure;
+
    public QuadrupedMpcOptimizationWithLaneChangeSettings()
    {
-      this(10, 1000000, 10000, 1);
+      this(10, 10, 1000000, 10000, 1);
    }
 
-   public QuadrupedMpcOptimizationWithLaneChangeSettings(double maximumPreviewTime, double angularMomentumCost, double stepAdjustmentCost, double copAdjustmentCost)
+   public QuadrupedMpcOptimizationWithLaneChangeSettings(double maximumPreviewTime, double angularMomentumCost, double stepAdjustmentCost, double copAdjustmentCost, double minimumNormalizedContactPressure)
    {
       this.maximumPreviewTime = maximumPreviewTime;
       this.angularMomentumCost = angularMomentumCost;
       this.stepAdjustmentCost = stepAdjustmentCost;
       this.copAdjustmentCost = copAdjustmentCost;
+      this.minimumNormalizedContactPressure = minimumNormalizedContactPressure;
    }
 
    public double getAngularMomentumCost()
@@ -65,5 +69,15 @@ public class QuadrupedMpcOptimizationWithLaneChangeSettings
    public void setMaximumPreviewTime(double maximumPreviewTime)
    {
       this.maximumPreviewTime = maximumPreviewTime;
+   }
+
+   public double getMinimumNormalizedContactPressure()
+   {
+      return minimumNormalizedContactPressure;
+   }
+
+   public void setMinimumNormalizedContactPressure(double minimumNormalizedContactPressure)
+   {
+      this.minimumNormalizedContactPressure = minimumNormalizedContactPressure;
    }
 }

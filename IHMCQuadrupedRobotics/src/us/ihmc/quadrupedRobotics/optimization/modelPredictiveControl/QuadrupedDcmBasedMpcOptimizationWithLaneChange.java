@@ -134,7 +134,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
 
       initializeCostTerms(currentContactState, settings);
       initializeEqualityConstraints(currentContactState, currentSolePosition);
-      initializeInequalityConstraints();
+      initializeInequalityConstraints(settings);
 
       DenseMatrix64F u = qpSolutionVector;
       u.reshape(numberOfContacts + 4, 1);
@@ -164,7 +164,6 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       {
          stepAdjustmentVector.set(direction, u.get(rowOffset++, 0));
       }
-
 
       // Update logging variables
       yoCmpPositionSetpoint.setAndMatchFrame(cmpPositionSetpoint);
@@ -288,7 +287,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       beq.set(2, 0, 1);
    }
 
-   private void initializeInequalityConstraints()
+   private void initializeInequalityConstraints(QuadrupedMpcOptimizationWithLaneChangeSettings settings)
    {
       // Initialize inequality constraints. (Ain u <= bin)
       DenseMatrix64F Ain = qpInequalityMatrix;
@@ -302,6 +301,10 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       DenseMatrix64F bin = qpInequalityVector;
       bin.reshape(numberOfContacts, 1);
       bin.zero();
+      for (int i = 0; i < numberOfContacts; i++)
+      {
+         bin.set(i, 0, -Math.min(Math.max(settings.getMinimumNormalizedContactPressure(), 0), 0.25));
+      }
    }
 
    private void addPointWithScaleFactor(FramePoint point, FramePoint pointToAdd, double scaleFactor)

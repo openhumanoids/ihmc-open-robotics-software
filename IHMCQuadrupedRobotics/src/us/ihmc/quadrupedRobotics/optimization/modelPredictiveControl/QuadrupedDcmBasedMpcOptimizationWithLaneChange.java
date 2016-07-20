@@ -57,6 +57,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
 
    private YoFramePoint yoCmpPositionSetpoint = new YoFramePoint("cmpPositionSetpoint", ReferenceFrame.getWorldFrame(), registry);
    private YoFrameVector yoStepAdjustmentVector = new YoFrameVector("stepAdjustmentVector", ReferenceFrame.getWorldFrame(), registry);
+   private YoFrameVector yoAngularMomentumRate = new YoFrameVector("angularMomentumRate", ReferenceFrame.getWorldFrame(), registry);
 
    public QuadrupedDcmBasedMpcOptimizationWithLaneChange(DivergentComponentOfMotionEstimator dcmPositionEstimator, int maxPreviewSteps,
          YoVariableRegistry parentRegistry, YoGraphicsListRegistry graphicsListRegistry)
@@ -76,7 +77,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       parentRegistry.addChild(registry);
    }
 
-   public void compute(FrameVector stepAdjustmentVector, FramePoint cmpPositionSetpoint, PreallocatedQueue<QuadrupedTimedStep> queuedSteps,
+   public void compute(FrameVector stepAdjustmentVector, FramePoint cmpPositionSetpoint, FrameVector angularMomentumRate, PreallocatedQueue<QuadrupedTimedStep> queuedSteps,
          QuadrantDependentList<FramePoint> currentSolePosition, QuadrantDependentList<ContactState> currentContactState, FramePoint currentComPosition,
          FrameVector currentComVelocity, double currentTime, QuadrupedMpcOptimizationWithLaneChangeSettings settings)
    {
@@ -99,6 +100,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       currentDcmEstimate.changeFrame(ReferenceFrame.getWorldFrame());
       cmpPositionSetpoint.changeFrame(ReferenceFrame.getWorldFrame());
       stepAdjustmentVector.changeFrame(ReferenceFrame.getWorldFrame());
+      angularMomentumRate.changeFrame(ReferenceFrame.getWorldFrame());
 
       // Compute current number of contacts.
       numberOfContacts = 0;
@@ -149,8 +151,12 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
 
       // Compute optimal centroidal moment pivot and step adjustment
       int rowOffset = 0;
-      cmpPositionSetpoint.set(-u.get(numberOfContacts + 3), u.get(numberOfContacts + 2), 0.0);
-      cmpPositionSetpoint.scale(1.0 / (linearInvertedPendulumModel.getMass() * linearInvertedPendulumModel.getGravity()));
+      angularMomentumRate.setX(u.get(numberOfContacts + 2));
+      angularMomentumRate.setY(u.get(numberOfContacts + 3));
+      cmpPositionSetpoint.setZ(0.0);
+      cmpPositionSetpoint.setX(-angularMomentumRate.getY() / (linearInvertedPendulumModel.getMass() * linearInvertedPendulumModel.getGravity()));
+      cmpPositionSetpoint.setY(angularMomentumRate.getX() / (linearInvertedPendulumModel.getMass() * linearInvertedPendulumModel.getGravity()));
+      cmpPositionSetpoint.setZ(0.0);
       for (RobotQuadrant robotQuadrant : RobotQuadrant.values)
       {
          if (currentContactState.get(robotQuadrant) == ContactState.IN_CONTACT)
@@ -168,6 +174,7 @@ public class QuadrupedDcmBasedMpcOptimizationWithLaneChange implements Quadruped
       // Update logging variables
       yoCmpPositionSetpoint.setAndMatchFrame(cmpPositionSetpoint);
       yoStepAdjustmentVector.setAndMatchFrame(stepAdjustmentVector);
+      yoAngularMomentumRate.setAndMatchFrame(angularMomentumRate);
    }
 
    private void initializeCostTerms(QuadrantDependentList<ContactState> currentContactState, QuadrupedMpcOptimizationWithLaneChangeSettings settings)

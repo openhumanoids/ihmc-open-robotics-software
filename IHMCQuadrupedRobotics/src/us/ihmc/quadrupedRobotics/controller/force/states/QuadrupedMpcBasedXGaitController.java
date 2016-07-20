@@ -16,6 +16,7 @@ import us.ihmc.quadrupedRobotics.params.ParameterFactory;
 import us.ihmc.quadrupedRobotics.planning.*;
 import us.ihmc.quadrupedRobotics.providers.QuadrupedControllerInputProviderInterface;
 import us.ihmc.quadrupedRobotics.providers.QuadrupedXGaitSettingsProvider;
+import us.ihmc.quadrupedRobotics.util.PreallocatedQueue;
 import us.ihmc.robotics.dataStructures.registry.YoVariableRegistry;
 import us.ihmc.robotics.dataStructures.variable.BooleanYoVariable;
 import us.ihmc.robotics.dataStructures.variable.DoubleYoVariable;
@@ -40,8 +41,8 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
    // parameters
    private final ParameterFactory parameterFactory = ParameterFactory.createWithRegistry(getClass(), registry);
    private final DoubleParameter mpcMaximumPreviewTimeParameter = parameterFactory.createDouble("maximumPreviewTime", 5);
-   private final DoubleParameter mpcAngularMomentumCostParameter = parameterFactory.createDouble("angularMomentumCost", 1000);
-   private final DoubleParameter mpcStepAdjustmentCostParameter = parameterFactory.createDouble("stepAdjustmentCost", 100000);
+   private final DoubleParameter mpcAngularMomentumCostParameter = parameterFactory.createDouble("angularMomentumCost", 1e3);
+   private final DoubleParameter mpcStepAdjustmentCostParameter = parameterFactory.createDouble("stepAdjustmentCost", 1e6);
    private final DoubleParameter mpcCopAdjustmentCostParameter = parameterFactory.createDouble("copAdjustmentCost", 1);
    private final DoubleParameter mpcMinimumNormalizedContactPressureParameter = parameterFactory.createDouble("mpcMinimumNormalizedContactPressure", 0.1);
    private final DoubleArrayParameter bodyOrientationProportionalGainsParameter = parameterFactory
@@ -71,7 +72,6 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
    private final LinearInvertedPendulumModel lipModel;
 
    // feedback controllers
-   private final FramePoint cmpPositionSetpoint;
    private final QuadrupedComPositionController.Setpoints comPositionControllerSetpoints;
    private final QuadrupedComPositionController comPositionController;
    private final QuadrupedBodyOrientationController.Setpoints bodyOrientationControllerSetpoints;
@@ -98,7 +98,9 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
    private EndDependentList<QuadrupedTimedStep> xGaitCurrentSteps;
    private final QuadrupedStepCrossoverProjection crossoverProjection;
    private final FramePoint supportCentroid;
+   private final FramePoint cmpPositionSetpoint;
    private final FrameVector stepAdjustmentVector;
+   private final FrameVector angularMomentumRate;
 
    // inputs
    private final DoubleYoVariable haltTime = new DoubleYoVariable("haltTime", registry);
@@ -161,6 +163,7 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
          xGaitCurrentSteps.set(robotEnd, new QuadrupedTimedStep());
       }
       stepAdjustmentVector = new FrameVector();
+      angularMomentumRate = new FrameVector();
       crossoverProjection = new QuadrupedStepCrossoverProjection(referenceFrames.getBodyZUpFrame(), minimumStepClearanceParameter.get(),
             maximumStepStrideParameter.get());
       supportCentroid = new FramePoint();
@@ -231,7 +234,7 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
                   RotationTools.computePitch(inputProvider.getBodyOrientationInput()) + groundPlaneEstimator.getPitch(bodyYawSetpoint),
                   RotationTools.computeRoll(inputProvider.getBodyOrientationInput()));
       bodyOrientationControllerSetpoints.getBodyAngularVelocity().setToZero();
-      bodyOrientationControllerSetpoints.getComTorqueFeedforward().setToZero();
+      bodyOrientationControllerSetpoints.getComTorqueFeedforward().setIncludingFrame(angularMomentumRate);
       bodyOrientationController.compute(taskSpaceControllerCommands.getComTorque(), bodyOrientationControllerSetpoints, taskSpaceEstimates);
 
       // update desired contact state and sole forces
@@ -315,14 +318,15 @@ public class QuadrupedMpcBasedXGaitController implements QuadrupedController, Qu
       double currentTime = robotTimestamp.getDoubleValue();
 
       // solve for step adjustment and cmp position
-      mpcOptimization.compute(stepAdjustmentVector, cmpPositionSetpoint, timedStepController.getQueue(), taskSpaceEstimates.getSolePosition(),
+      PreallocatedQueue<QuadrupedTimedStep> stepQueue = timedStepController.getQueue();
+      mpcOptimization.compute(stepAdjustmentVector, cmpPositionSetpoint, angularMomentumRate, stepQueue, taskSpaceEstimates.getSolePosition(),
             taskSpaceControllerSettings.getContactState(), taskSpaceEstimates.getComPosition(), taskSpaceEstimates.getComVelocity(), currentTime, mpcSettings);
 
       // adjust goal positions in step controller queue
       stepAdjustmentVector.changeFrame(worldFrame);
-      for (int i = 0; i < timedStepController.getQueue().size(); i++)
+      for (int i = 0; i < stepQueue.size(); i++)
       {
-         QuadrupedTimedStep step = timedStepController.getQueue().get(i);
+         QuadrupedTimedStep step = stepQueue.get(i);
          step.getGoalPosition().add(stepAdjustmentVector.getVector());
          if (step.getTimeInterval().getStartTime() <= currentTime)
          {

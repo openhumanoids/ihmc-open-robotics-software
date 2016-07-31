@@ -2,6 +2,7 @@ package us.ihmc.sensorProcessing.simulatedSensors;
 
 import java.util.ArrayList;
 
+import us.ihmc.robotics.sensors.FusedForceSensorDefinition;
 import us.ihmc.robotics.sensors.IMUDefinition;
 import us.ihmc.robotics.sensors.ForceSensorDefinition;
 import us.ihmc.robotics.screwTheory.OneDoFJoint;
@@ -11,6 +12,7 @@ public class StateEstimatorSensorDefinitions
    private final ArrayList<OneDoFJoint> oneDoFJointSensorDefinitions = new ArrayList<OneDoFJoint>();
    private final ArrayList<IMUDefinition> imuSensorDefinitions = new ArrayList<IMUDefinition>();
    private final ArrayList<ForceSensorDefinition> forceSensorDefinitions = new ArrayList<ForceSensorDefinition>();
+   private final ArrayList<FusedForceSensorDefinition> fusedForceSensorDefinitions = new ArrayList<>();
 
    public StateEstimatorSensorDefinitions()
    {
@@ -29,6 +31,11 @@ public class StateEstimatorSensorDefinitions
    public ArrayList<ForceSensorDefinition> getForceSensorDefinitions()
    {
       return forceSensorDefinitions;
+   }
+
+   public ArrayList<FusedForceSensorDefinition> getFusedForceSensorDefinitions()
+   {
+      return fusedForceSensorDefinitions;
    }
 
    public void addJointSensorDefinition(OneDoFJoint oneDoFJoint)
@@ -50,5 +57,10 @@ public class StateEstimatorSensorDefinitions
    public void addForceSensorDefinition(ForceSensorDefinition forceSensorDefinition)
    {
       forceSensorDefinitions.add(forceSensorDefinition);
+   }
+
+   public void addFusedForceSensorDefinition(FusedForceSensorDefinition fusedForceSensorDefinition)
+   {
+      fusedForceSensorDefinitions.add(fusedForceSensorDefinition);
    }
 }

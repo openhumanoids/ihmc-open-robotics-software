@@ -45,6 +45,11 @@ public class ForceSensorDefinition
       transformToPack.set(transformFromSensorToParentJoint);
    }
 
+   public RigidBodyTransform getTransformFromSensorToParentJoint()
+   {
+      return transformFromSensorToParentJoint;
+   }
+
    public ReferenceFrame getSensorFrame()
    {
       return sensorFrame;

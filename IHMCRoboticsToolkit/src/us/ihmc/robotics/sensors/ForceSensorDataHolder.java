@@ -3,6 +3,7 @@ package us.ihmc.robotics.sensors;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.ejml.data.DenseMatrix64F;
 
@@ -12,10 +13,17 @@ import us.ihmc.robotics.screwTheory.Wrench;
 public class ForceSensorDataHolder implements ForceSensorDataHolderReadOnly
 {
    private final HashMap<ForceSensorDefinition, ForceSensorData> forceSensors = new HashMap<ForceSensorDefinition, ForceSensorData>();
+   private final HashMap<ForceSensorDefinition, FusedForceSensorData> fusedForceSensors = new HashMap<ForceSensorDefinition, FusedForceSensorData>();
    private final HashMap<String, ForceSensorDefinition> sensorNameToDefintionMap = new HashMap<>();
    private final ArrayList<ForceSensorDefinition> forceSensorDefinitions = new ArrayList<ForceSensorDefinition>();
+   private final ArrayList<FusedForceSensorDefinition> fusedForceSensorDefinitions = new ArrayList<FusedForceSensorDefinition>();
 
    public ForceSensorDataHolder(List<ForceSensorDefinition> forceSensors)
+   {
+      this(forceSensors, null);
+   }
+
+   public ForceSensorDataHolder(List<ForceSensorDefinition> forceSensors, List<FusedForceSensorDefinition> fusedForceSensors)
    {
       for (ForceSensorDefinition forceSensorDefinition : forceSensors)
       {
@@ -23,6 +31,17 @@ public class ForceSensorDataHolder implements ForceSensorDataHolderReadOnly
          forceSensorDefinitions.add(forceSensorDefinition);
          this.forceSensors.put(forceSensorDefinition, forceSensor);
          sensorNameToDefintionMap.put(forceSensorDefinition.getSensorName(), forceSensorDefinition);
+      }
+
+      if (fusedForceSensors != null)
+      {
+         for (FusedForceSensorDefinition fusedForceSensorDefinition : fusedForceSensors)
+         {
+            FusedForceSensorData fusedForceSensor = new FusedForceSensorData(fusedForceSensorDefinition, this.forceSensors);
+            fusedForceSensorDefinitions.add(fusedForceSensorDefinition);
+            this.fusedForceSensors.put(fusedForceSensorDefinition, fusedForceSensor);
+            sensorNameToDefintionMap.put(fusedForceSensorDefinition.getSensorName(), fusedForceSensorDefinition);
+         }
       }
    }
 
@@ -33,9 +52,21 @@ public class ForceSensorDataHolder implements ForceSensorDataHolderReadOnly
    }
 
    @Override
+   public FusedForceSensorData getFusedSensorData(ForceSensorDefinition fusedForceSensor)
+   {
+      return fusedForceSensors.get(fusedForceSensor);
+   }
+
+   @Override
    public List<ForceSensorDefinition> getForceSensorDefinitions()
    {
       return forceSensorDefinitions;
+   }
+
+   @Override
+   public List<FusedForceSensorDefinition> getFusedForceSensorDefinitions()
+   {
+      return fusedForceSensorDefinitions;
    }
 
    @Override
@@ -88,6 +119,15 @@ public class ForceSensorDataHolder implements ForceSensorDataHolderReadOnly
    public void setForceSensorValue(ForceSensorDefinition key, Wrench wrench)
    {
       forceSensors.get(key).setWrench(wrench);
+   }
+
+   public void updateFusedForceSensors()
+   {
+      for (int i = 0; i < fusedForceSensorDefinitions.size(); i++)
+      {
+         final FusedForceSensorDefinition fusedForceSensorDefinition = fusedForceSensorDefinitions.get(i);
+         fusedForceSensors.get(fusedForceSensorDefinition).updateWrench();
+      }
    }
 
    @Override

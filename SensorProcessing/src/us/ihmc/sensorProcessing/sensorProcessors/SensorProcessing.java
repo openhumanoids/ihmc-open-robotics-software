@@ -42,10 +42,7 @@ import us.ihmc.robotics.math.frames.YoFrameVector;
 import us.ihmc.robotics.referenceFrames.ReferenceFrame;
 import us.ihmc.robotics.screwTheory.OneDoFJoint;
 import us.ihmc.robotics.screwTheory.Wrench;
-import us.ihmc.robotics.sensors.ForceSensorDataHolder;
-import us.ihmc.robotics.sensors.ForceSensorDataHolderReadOnly;
-import us.ihmc.robotics.sensors.ForceSensorDefinition;
-import us.ihmc.robotics.sensors.IMUDefinition;
+import us.ihmc.robotics.sensors.*;
 import us.ihmc.sensorProcessing.communication.packets.dataobjects.AuxiliaryRobotData;
 import us.ihmc.sensorProcessing.diagnostic.DiagnosticUpdatable;
 import us.ihmc.sensorProcessing.diagnostic.IMUSensorValidityChecker;
@@ -207,6 +204,7 @@ public class SensorProcessing implements SensorOutputMapReadOnly, SensorRawOutpu
    private final List<OneDoFJoint> jointSensorDefinitions;
    private final List<IMUDefinition> imuSensorDefinitions;
    private final List<ForceSensorDefinition> forceSensorDefinitions;
+   private final List<FusedForceSensorDefinition> fusedForceSensorDefinitions;
 
    private final List<String> allJointSensorNames = new ArrayList<>();
    private final List<String> allIMUSensorNames = new ArrayList<>();
@@ -234,6 +232,7 @@ public class SensorProcessing implements SensorOutputMapReadOnly, SensorRawOutpu
       jointSensorDefinitions = stateEstimatorSensorDefinitions.getJointSensorDefinitions();
       imuSensorDefinitions = stateEstimatorSensorDefinitions.getIMUSensorDefinitions();
       forceSensorDefinitions = stateEstimatorSensorDefinitions.getForceSensorDefinitions();
+      fusedForceSensorDefinitions = stateEstimatorSensorDefinitions.getFusedForceSensorDefinitions();
       this.auxiliaryRobotData = null;
 
       String prefix = null;
@@ -334,8 +333,30 @@ public class SensorProcessing implements SensorOutputMapReadOnly, SensorRawOutpu
          processedTorques.put(forceSensorDefinition, new ArrayList<ProcessingYoVariable>());
       }
 
-      inputForceSensors = new ForceSensorDataHolder(forceSensorDefinitions);
-      outputForceSensors = new ForceSensorDataHolder(forceSensorDefinitions);
+      for (int i = 0; i < fusedForceSensorDefinitions.size(); i++)
+      {
+         ForceSensorDefinition forceSensorDefinition = fusedForceSensorDefinitions.get(i);
+         String sensorName = forceSensorDefinition.getSensorName();
+         allForceSensorNames.add(sensorName);
+         ReferenceFrame sensorFrame = forceSensorDefinition.getSensorFrame();
+
+         prefix = FORCE_SENSOR.getProcessorNamePrefix(RAW);
+         suffix = FORCE_SENSOR.getProcessorNameSuffix(sensorName, -1);
+         YoFrameVector rawForce = new YoFrameVector(prefix, suffix, sensorFrame, registry);
+         inputForces.put(forceSensorDefinition, rawForce);
+         intermediateForces.put(forceSensorDefinition, rawForce);
+         processedForces.put(forceSensorDefinition, new ArrayList<ProcessingYoVariable>());
+
+         prefix = TORQUE_SENSOR.getProcessorNamePrefix(RAW);
+         suffix = TORQUE_SENSOR.getProcessorNameSuffix(sensorName, -1);
+         YoFrameVector rawTorque = new YoFrameVector(prefix, suffix, sensorFrame, registry);
+         inputTorques.put(forceSensorDefinition, rawTorque);
+         intermediateTorques.put(forceSensorDefinition, rawTorque);
+         processedTorques.put(forceSensorDefinition, new ArrayList<ProcessingYoVariable>());
+      }
+
+      inputForceSensors = new ForceSensorDataHolder(forceSensorDefinitions, fusedForceSensorDefinitions);
+      outputForceSensors = new ForceSensorDataHolder(forceSensorDefinitions, fusedForceSensorDefinitions);
 
       sensorProcessingConfiguration.configureSensorProcessing(this);
       parentRegistry.addChild(registry);
@@ -405,6 +426,9 @@ public class SensorProcessing implements SensorOutputMapReadOnly, SensorRawOutpu
          tempWrench.set(tempForce, tempTorque);
          outputForceSensors.setForceSensorValue(forceSensorDefinition, tempWrench);
       }
+
+      inputForceSensors.updateFusedForceSensors();
+      outputForceSensors.updateFusedForceSensors();
 
       for (int i = 0; i < diagnosticModules.size(); i++)
          diagnosticModules.get(i).update();

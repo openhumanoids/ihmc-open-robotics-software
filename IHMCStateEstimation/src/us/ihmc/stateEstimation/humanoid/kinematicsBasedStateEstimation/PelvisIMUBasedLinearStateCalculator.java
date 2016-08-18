@@ -13,7 +13,6 @@ import us.ihmc.robotics.screwTheory.SixDoFJoint;
 import us.ihmc.robotics.screwTheory.Twist;
 import us.ihmc.sensorProcessing.stateEstimation.IMUSensorReadOnly;
 import us.ihmc.sensorProcessing.stateEstimation.evaluation.FullInverseDynamicsStructure;
-import us.ihmc.simulationconstructionset.yoUtilities.graphics.YoGraphicReferenceFrame;
 import us.ihmc.simulationconstructionset.yoUtilities.graphics.YoGraphicsListRegistry;
 
 public class PelvisIMUBasedLinearStateCalculator
@@ -39,9 +38,6 @@ public class PelvisIMUBasedLinearStateCalculator
    private final YoFrameVector yoRootJointIMUBasedLinearVelocityInWorld;
    private final YoFrameVector yoLinearAccelerationMeasurementInWorld;
    private final YoFrameVector yoLinearAccelerationMeasurement;
-
-   private final YoFrameVector imuOffsetInPelvisFrameAdjustmentHack;
-   private final YoGraphicReferenceFrame imuReferenceFrameViz;
 
    private final BooleanYoVariable imuBasedStateEstimationEnabled = new BooleanYoVariable("imuBasedStateEstimationEnabled", registry);
 
@@ -93,10 +89,6 @@ public class PelvisIMUBasedLinearStateCalculator
       yoRootJointIMUBasedLinearVelocityInWorld = new YoFrameVector("rootJointIMUBasedLinearVelocityInWorld", worldFrame, registry);
       yoLinearAccelerationMeasurement = new YoFrameVector("imuLinearAcceleration", measurementFrame, registry);
       yoLinearAccelerationMeasurementInWorld = new YoFrameVector("imuLinearAccelerationInWorld", worldFrame, registry);
-
-      imuOffsetInPelvisFrameAdjustmentHack = new YoFrameVector("imuOffsetHack", rootJoint.getFrameAfterJoint(), registry);
-      imuReferenceFrameViz = new YoGraphicReferenceFrame(measurementFrame, parentRegistry, 1.5);
-      yoGraphicsListRegistry.registerYoGraphic("IMUReferenceFrame", imuReferenceFrameViz);
 
       setRootJointPositionImuOnlyToCurrent.set(true);
       alphaLeakIMUOnly.set(0.999);
@@ -218,11 +210,8 @@ public class PelvisIMUBasedLinearStateCalculator
 
       measurementOffset.setToZero(measurementFrame);
       measurementOffset.changeFrame(rootJoint.getFrameAfterJoint());
-      measurementOffset.add(imuOffsetInPelvisFrameAdjustmentHack.getFrameTuple());
 
       correctionTermToPack.setToZero(tempRootJointAngularVelocity.getReferenceFrame());
       correctionTermToPack.cross(tempRootJointAngularVelocity, measurementOffset);
-
-      imuReferenceFrameViz.update();
    }
 }

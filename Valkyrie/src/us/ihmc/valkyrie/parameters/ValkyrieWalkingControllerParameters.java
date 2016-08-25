@@ -512,10 +512,10 @@ public class ValkyrieWalkingControllerParameters extends WalkingControllerParame
 
       boolean runningOnRealRobot = target == DRCRobotModel.RobotTarget.REAL_ROBOT;
 
-      double kpXY = runningOnRealRobot ? 80.0 : 100.0;
-      double kpZ = runningOnRealRobot ? 80.0 : 100.0;
-      double zetaXY = runningOnRealRobot ? 0.8 : 0.8; // 0.7
-      double zetaZ = runningOnRealRobot ? 0.8 : 0.8; // 0.7
+      double kpXY = runningOnRealRobot ? 100.0 : 100.0;
+      double kpZ = runningOnRealRobot ? 100.0 : 100.0; // wxm changed from 80, tuning with alex
+      double zetaXY = runningOnRealRobot ? 0.9 : 0.8; // 0.7
+      double zetaZ = runningOnRealRobot ? 0.9 : 0.8; // 0.7 // wxm changed from 1.0, tuning with alex
       double maxAccel = runningOnRealRobot ? 18.0 : 18.0;
       double maxJerk = runningOnRealRobot ? 270.0 : 270.0;
 
@@ -611,9 +611,9 @@ public class ValkyrieWalkingControllerParameters extends WalkingControllerParame
       boolean runningOnRealRobot = target == DRCRobotModel.RobotTarget.REAL_ROBOT;
 
       double kpXY = runningOnRealRobot ? 80.0 : 100.0;
-      double kpZ = runningOnRealRobot ? 60.0 : 100.0;
+      double kpZ = runningOnRealRobot ? 80.0 : 100.0; // wxm changed from 60, tuning with alex
       double zetaXY = runningOnRealRobot ? 0.8 : 0.8;
-      double zetaZ = runningOnRealRobot ? 0.8 : 0.8;
+      double zetaZ = runningOnRealRobot ? 0.9 : 0.8; // wxm changed from 0.8, tuning with alex
       double maxAccel = runningOnRealRobot ? 12.0 : 18.0;
       double maxJerk = runningOnRealRobot ? 180.0 : 270.0;
 

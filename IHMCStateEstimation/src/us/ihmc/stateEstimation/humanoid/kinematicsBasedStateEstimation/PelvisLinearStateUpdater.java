@@ -540,6 +540,11 @@ public class PelvisLinearStateUpdater
 
       rootJointPosition.set(pelvisPositionIMUPart);
       rootJointPosition.add(pelvisPositionKinPart);
+      
+      //FramePoint point = new FramePoint();
+      //point.set(0.003, -0.003, 0);
+      //rootJointPosition.add(point);
+      
       yoRootJointPosition.set(rootJointPosition);
    }
 

@@ -257,6 +257,7 @@ public class ClippedSpeedOffsetErrorInterpolator
       maximumErrorTranslation.set(MAXIMUM_TRANSLATION_ERROR);
       
       startYaw = new DoubleYoVariable("startYaw", registry);
+      // this is what the user wants the yaw to be
       goalYaw = new DoubleYoVariable("goalYaw", registry);
       interpolatedYaw = new DoubleYoVariable("interpolatedYaw", registry);
     
@@ -269,6 +270,11 @@ public class ClippedSpeedOffsetErrorInterpolator
 
    public boolean checkIfErrorIsTooBig(FramePose correctedPelvisPoseInWorldFrame, FramePose iterativeClosestPointInWorldFramePose, boolean isRotationCorrectionEnabled)
    {
+	  System.out.print("\nNew message Check if error too big\n");
+	  //System.out.print(correctedPelvisPoseInWorldFrame.getX() + " " +correctedPelvisPoseInWorldFrame.getY() +  " correctedPelvisPoseInWorldFrame\n");
+	  //System.out.print(iterativeClosestPointInWorldFramePose.getX() + " " +iterativeClosestPointInWorldFramePose.getY() +  " iterativeClosestPointInWorldFramePose\n");
+	  System.out.print(isRotationCorrectionEnabled +  " isRotationCorrectionEnabled\n");
+
       correctedPelvisPoseReferenceFrame.setPoseAndUpdate(correctedPelvisPoseInWorldFrame);
       
       iterativeClosestPointInWorldFramePose.getOrientationIncludingFrame(iterativeClosestPointOrientation);
@@ -284,8 +290,18 @@ public class ClippedSpeedOffsetErrorInterpolator
       translationErrorY.set(Math.abs(iterativeClosestPointTranslation.getY()));
       translationErrorZ.set(Math.abs(iterativeClosestPointTranslation.getZ()));
       
+      System.out.print("correction yaw: " + axisAngleForError.getAngle() + "\n");
+      System.out.print("correction yaw: " + axisAngleForError.getAngle() + "\n");
+      
       if(isRotationCorrectionEnabled && Math.abs(axisAngleForError.getAngle()) > Math.toRadians(maximumErrorAngleInDegrees.getDoubleValue()))
          return true;
+
+      // at this stage correctedPelvisPoseInWorldFrame contains the current pose from ROS
+	  System.out.print(correctedPelvisPoseInWorldFrame.getX() + " " +correctedPelvisPoseInWorldFrame.getY() +  " correctedPelvisPoseInWorldFrame\n");
+      // at this stage iterativeClosestPointInWorldFramePose contains the input pose from ROS
+	  System.out.print(iterativeClosestPointInWorldFramePose.getX() + " " +iterativeClosestPointInWorldFramePose.getY() +  " iterativeClosestPointInWorldFramePose\n");
+      
+	  
       
       if(Math.abs(iterativeClosestPointTranslation.getX()) > maximumErrorTranslation.getDoubleValue())
          return true;
@@ -299,6 +315,11 @@ public class ClippedSpeedOffsetErrorInterpolator
 
    public void setInterpolatorInputs(FramePose startOffsetError, FramePose goalOffsetError, double alphaFilterPosition)
    {
+	  // this is called after   checkIfErrorIsTooBig once 
+	  System.out.print(startOffsetError.getX() + " " +startOffsetError.getY() +  " startOffsetError\n");
+      System.out.print(goalOffsetError.getX() + " " +goalOffsetError.getY() +  " goalOffsetError\n");
+	   
+	   
       startOffsetErrorPose.setPoseIncludingFrame(startOffsetError);
       goalOffsetErrorPose.setPoseIncludingFrame(goalOffsetError);
       if (!isRotationCorrectionEnabled.getBooleanValue())
@@ -348,6 +369,7 @@ public class ClippedSpeedOffsetErrorInterpolator
       
       startOffsetTransform_Translation.setTranslationAndIdentityRotation(updatedStartOffset_Translation);
       
+      // error = startOffsetErrorPose - goalOffsetErrorPose
       offsetBetweenStartAndGoalVector_Translation.sub(updatedGoalOffset_Translation, updatedStartOffset_Translation);
       goalTranslationRawX.set(offsetBetweenStartAndGoalVector_Translation.getX());
       goalTranslationRawY.set(offsetBetweenStartAndGoalVector_Translation.getY());
@@ -355,12 +377,19 @@ public class ClippedSpeedOffsetErrorInterpolator
       goalTranslationWithDeadzoneX.update();
       goalTranslationWithDeadzoneY.update();
       goalTranslationWithDeadzoneZ.update();
+
+      // This contains the actual pose modification i.e. the 5-10cm correction
+      System.out.print(goalTranslationWithDeadzoneX + " " +goalTranslationWithDeadzoneY +  " goalTranslationWithDeadzoneX and Y\n");      
       
       updatedGoalOffsetWithDeadzone_Translation.setX(updatedStartOffset_Translation.getX() + goalTranslationWithDeadzoneX.getDoubleValue());
       updatedGoalOffsetWithDeadzone_Translation.setY(updatedStartOffset_Translation.getY() + goalTranslationWithDeadzoneY.getDoubleValue());
       updatedGoalOffsetWithDeadzone_Translation.setZ(updatedStartOffset_Translation.getZ() + goalTranslationWithDeadzoneZ.getDoubleValue());
       
       goalOffsetTransform_Translation.setTranslationAndIdentityRotation(updatedGoalOffsetWithDeadzone_Translation);
+      
+      // mfallon: updatedGoalOffsetWithDeadzone_Translation will contain a compound of the error corrections for all corrections 
+      System.out.print(updatedGoalOffsetWithDeadzone_Translation.getX() + " " +updatedGoalOffsetWithDeadzone_Translation.getY() +  " updatedGoalOffsetWithDeadzone_Translation\n");
+      
    }
 
    private void updateStartAndGoalOffsetErrorRotation()
@@ -382,16 +411,31 @@ public class ClippedSpeedOffsetErrorInterpolator
       goalOffsetErrorPose.getOrientationIncludingFrame(updatedGoalOffset_Rotation);
       
       startOffsetTransform_Rotation.setRotationAndZeroTranslation(updatedStartOffset_Rotation_quat);
+
+      updatedStartOffset_Rotation.getYawPitchRoll(temporaryYawPitchRoll);
+      System.out.print(temporaryYawPitchRoll[0] +  " updatedStartOffset_Rotation yaw 1\n");
+      
+      updatedGoalOffset_Rotation.getYawPitchRoll(temporaryYawPitchRoll);
       updatedGoalOffset_Rotation.getYawPitchRoll(updatedGoalOffset_Rotation_YawPitchRoll);
+      System.out.print(temporaryYawPitchRoll[0] +  " updatedGoalOffset_Rotation yaw 2\n");
+      
       
       offsetBetweenStartAndGoal_Rotation.setOrientationFromOneToTwo(updatedGoalOffset_Rotation, updatedStartOffset_Rotation);
       offsetBetweenStartAndGoal_Rotation.getYawPitchRoll(temporaryYawPitchRoll);
+      
+      System.out.print(temporaryYawPitchRoll[0] +  " offsetBetweenStartAndGoal_Rotation yaw (1-2)\n");      
+      
+      
       goalYawRaw.set(temporaryYawPitchRoll[0]);
       goalYawWithDeadZone.update();
       RotationTools.convertYawPitchRollToQuaternion(updatedGoalOffset_Rotation_YawPitchRoll[0], temporaryYawPitchRoll[1], temporaryYawPitchRoll[2], updatedGoalOffsetWithDeadZone_Rotation_quat);
       updatedGoalOffsetWithDeadZone_Rotation.set(updatedGoalOffsetWithDeadZone_Rotation_quat);
       
       goalOffsetTransform_Rotation.setRotationAndZeroTranslation(updatedGoalOffsetWithDeadZone_Rotation_quat);
+      
+      // mfallon: updatedGoalOffsetWithDeadzone_Translation will contain a compound of the error corrections for all corrections 
+      
+      System.out.print(goalYawWithDeadZone.getDoubleValue() +  " goalYawWithDeadZone\n");      
    }
 
    private void updateMaxTranslationAlphaVariationSpeed()

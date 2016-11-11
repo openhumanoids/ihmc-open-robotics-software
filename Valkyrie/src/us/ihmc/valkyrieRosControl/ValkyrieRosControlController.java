@@ -69,8 +69,8 @@ public class ValkyrieRosControlController extends IHMCWholeRobotControlJavaBridg
          "rightElbowPitch" };
 
    private static final String[] positionControlledJoints = { "lowerNeckPitch", "neckYaw", "upperNeckPitch",
-         "rightForearmYaw", "rightWristRoll", "rightWristPitch"
-//         "leftForearmYaw", "leftWristRoll", "leftWristPitch"
+         "rightForearmYaw", "rightWristRoll", "rightWristPitch",
+         "leftForearmYaw", "leftWristRoll", "leftWristPitch"
          };
 
    public static final boolean USE_YOVARIABLE_DESIREDS = true;

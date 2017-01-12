@@ -32,7 +32,7 @@ public class ControllerCommandValidationTools
    {
       if (trajectoryPointLists.size() != joints.length)
       {
-         PrintTools.warn("Incorreect joint length. Expected "+joints.length+" got "+trajectoryPointLists.size());
+         PrintTools.warn("Incorrect joint length. Expected "+joints.length+" got "+trajectoryPointLists.size());
          return false;
       }
 

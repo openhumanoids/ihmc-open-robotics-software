@@ -23,11 +23,11 @@ import us.ihmc.robotics.referenceFrames.PoseReferenceFrame;
 
 public class ClippedSpeedOffsetErrorInterpolator
 {
-   private static final double Z_DEADZONE_SIZE = 0.014;
-   private static final double Y_DEADZONE_SIZE = 0.014;
-   private static final double X_DEADZONE_SIZE = 0.014;
+   private static final double Z_DEADZONE_SIZE = 0.0;
+   private static final double Y_DEADZONE_SIZE = 0.0;
+   private static final double X_DEADZONE_SIZE = 0.0;
    
-   private static final double YAW_DEADZONE_IN_DEGREES = 1.0;
+   private static final double YAW_DEADZONE_IN_DEGREES = 0.0;
    
    private static final double MAXIMUM_TRANSLATION_ERROR = 0.15;
    private static final double MAXIMUM_ANGLE_ERROR_IN_DEGRESS = 10.0;
@@ -266,6 +266,11 @@ public class ClippedSpeedOffsetErrorInterpolator
 
    public boolean checkIfErrorIsTooBig(FramePose correctedPelvisPoseInWorldFrame, FramePose iterativeClosestPointInWorldFramePose, boolean isRotationCorrectionEnabled)
    {
+	   System.out.print("\nNew message Check if error too big\n");
+	   System.out.print(correctedPelvisPoseInWorldFrame.getX() + " " +correctedPelvisPoseInWorldFrame.getY() +  " correctedPelvisPoseInWorldFrame\n");
+	   System.out.print(iterativeClosestPointInWorldFramePose.getX() + " " +iterativeClosestPointInWorldFramePose.getY() +  " iterativeClosestPointInWorldFramePose\n");
+	   System.out.print(isRotationCorrectionEnabled +  " isRotationCorrectionEnabled\n");
+	   
       correctedPelvisPoseReferenceFrame.setPoseAndUpdate(correctedPelvisPoseInWorldFrame);
       
       iterativeClosestPointInWorldFramePose.getOrientationIncludingFrame(iterativeClosestPointOrientation);
@@ -282,14 +287,26 @@ public class ClippedSpeedOffsetErrorInterpolator
       translationErrorZ.set(Math.abs(iterativeClosestPointTranslation.getZ()));
       
       if(isRotationCorrectionEnabled && Math.abs(axisAngleForError.getAngle()) > Math.toRadians(maximumErrorAngleInDegrees.getDoubleValue()))
+      {
+    	  System.out.print("Rotation correction NOT accepted\n");
          return true;
+      }
       
       if(Math.abs(iterativeClosestPointTranslation.getX()) > maximumErrorTranslation.getDoubleValue())
+      {
+    	  System.out.print("x correction NOT accepted\n");
          return true;
+      }
       if(Math.abs(iterativeClosestPointTranslation.getY()) > maximumErrorTranslation.getDoubleValue())
+      {
+    	  System.out.print("y correction NOT accepted\n");
          return true;
+      }
       if(Math.abs(iterativeClosestPointTranslation.getZ()) > maximumErrorTranslation.getDoubleValue())
+      {
+    	  System.out.print("z correction NOT accepted\n");
          return true;
+      }
       
       return false;
    }
